@@ -30,9 +30,6 @@ string[] fortniteArgs = [
     "-epicsandboxid=fn"
 ];
 
-Console.WriteLine(launcher);
-Console.WriteLine(string.Join(' ', fortniteArgs));
-
 var startInfo = new ProcessStartInfo {
     FileName = launcher,
     WorkingDirectory = Path.GetDirectoryName(launcher),
