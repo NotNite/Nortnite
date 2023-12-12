@@ -1,5 +1,4 @@
 ﻿using System.CommandLine;
-using System.Diagnostics;
 using Nortnite;
 
 var dontLaunchOption = new Option<bool>(
@@ -20,30 +19,28 @@ var userOption = new Option<string>(
 };
 
 var rootCommand = new RootCommand("it Norts your Forts™") {dontLaunchOption, logOption, userOption};
-var parsed = rootCommand.Parse(args);
-var dontLaunch = parsed.GetValueForOption(dontLaunchOption);
-var log = parsed.GetValueForOption(logOption);
-var user = parsed.GetValueForOption(userOption);
-if (user is null) throw new ArgumentException("idk how to use system.commandline");
+rootCommand.SetHandler(async (dontLaunch, log, user) => {
+    var epicLogin = new EpicLogin();
+    var launcher = new Launcher();
+    var dataManager = new PersistedDataManager();
 
-var epicLogin = new EpicLogin();
-var launcher = new Launcher();
-var dataManager = new PersistedDataManager();
+    var tokenResponse = await epicLogin.LoginMaybeCached(
+                            user,
+                            dataManager.GetCachedResponseForUser(user),
+                            log
+                        );
+    dataManager.SaveCachedResponseForUser(user, tokenResponse);
+    var exchangeResponse = await epicLogin.GetExchange(tokenResponse.AccessToken, log);
 
-var tokenResponse = await epicLogin.LoginMaybeCached(
-                        user,
-                        dataManager.GetCachedResponseForUser(user),
-                        log
-                    );
-dataManager.SaveCachedResponseForUser(user, tokenResponse);
-var exchangeResponse = await epicLogin.GetExchange(tokenResponse.AccessToken, log);
+    if (!dontLaunch) {
+        var manifest = launcher.GetFortniteManifest();
+        launcher.LaunchFortnite(
+            manifest,
+            exchangeResponse.Code,
+            tokenResponse.DisplayName,
+            tokenResponse.AccountId
+        );
+    }
+}, dontLaunchOption, logOption, userOption);
 
-if (!dontLaunch) {
-    var manifest = launcher.GetFortniteManifest();
-    launcher.LaunchFortnite(
-        manifest,
-        exchangeResponse.Code,
-        tokenResponse.DisplayName,
-        tokenResponse.AccountId
-    );
-}
+await rootCommand.InvokeAsync(args);
