@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using System.Diagnostics;
 using Nortnite;
 
 var dontLaunchOption = new Option<bool>(
@@ -11,16 +12,30 @@ var logOption = new Option<bool>(
     () => false,
     "Log the token and exchange response"
 );
+var userOption = new Option<string>(
+    "--username",
+    "User to log in as"
+) {
+    IsRequired = true
+};
 
-var rootCommand = new RootCommand("it Norts your Forts™") {dontLaunchOption, logOption};
+var rootCommand = new RootCommand("it Norts your Forts™") {dontLaunchOption, logOption, userOption};
 var parsed = rootCommand.Parse(args);
 var dontLaunch = parsed.GetValueForOption(dontLaunchOption);
 var log = parsed.GetValueForOption(logOption);
+var user = parsed.GetValueForOption(userOption);
+if (user is null) throw new ArgumentException("idk how to use system.commandline");
 
 var epicLogin = new EpicLogin();
 var launcher = new Launcher();
+var dataManager = new PersistedDataManager();
 
-var tokenResponse = await epicLogin.Login(log);
+var tokenResponse = await epicLogin.LoginMaybeCached(
+                        user,
+                        dataManager.GetCachedResponseForUser(user),
+                        log
+                    );
+dataManager.SaveCachedResponseForUser(user, tokenResponse);
 var exchangeResponse = await epicLogin.GetExchange(tokenResponse.AccessToken, log);
 
 if (!dontLaunch) {

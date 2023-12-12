@@ -9,4 +9,6 @@ public class TokenResponse {
     [JsonPropertyName("refresh_expires_at")] public DateTime? RefreshExpiresAt { get; init; }
     [JsonPropertyName("account_id")] public required string AccountId { get; init; }
     [JsonPropertyName("displayName")] public required string DisplayName { get; init; }
+
+    public bool Expired() => this.RefreshExpiresAt < DateTime.UtcNow;
 }
