@@ -26,7 +26,7 @@ public class EpicLogin {
         return http;
     }
 
-    public async Task<TokenResponse> Login() {
+    public async Task<TokenResponse> Login(bool log = false) {
         Console.WriteLine($"Please go to the following URL: {Constants.RedirectUrl}");
         Console.Write("Enter the provided authorization code: ");
         var authCode = Console.ReadLine()!;
@@ -39,15 +39,17 @@ public class EpicLogin {
         });
 
         var resp = await http.PostAsync("/account/api/oauth/token", form);
+        if (log) Console.WriteLine(await resp.Content.ReadAsStringAsync());
         resp.EnsureSuccessStatusCode();
         return (await resp.Content.ReadFromJsonAsync<TokenResponse>())!;
     }
 
-    public async Task<ExchangeResponse> GetExchange(string token) {
+    public async Task<ExchangeResponse> GetExchange(string token, bool log = false) {
         using var http = this.GetHttpClient();
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var resp = await http.GetAsync("/account/api/oauth/exchange");
+        if (log) Console.WriteLine(await resp.Content.ReadAsStringAsync());
         resp.EnsureSuccessStatusCode();
         return (await resp.Content.ReadFromJsonAsync<ExchangeResponse>())!;
     }

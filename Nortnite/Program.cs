@@ -1,38 +1,34 @@
-﻿using System.Diagnostics;
-using System.Text.Json;
+﻿using System.CommandLine;
 using Nortnite;
-using Nortnite.Json;
+
+var dontLaunchOption = new Option<bool>(
+    "--dont-launch",
+    () => false,
+    "Go through the auth process but don't start Fortnite"
+);
+var logOption = new Option<bool>(
+    "--log",
+    () => false,
+    "Log the token and exchange response"
+);
+
+var rootCommand = new RootCommand("it Norts your Forts™") {dontLaunchOption, logOption};
+var parsed = rootCommand.Parse(args);
+var dontLaunch = parsed.GetValueForOption(dontLaunchOption);
+var log = parsed.GetValueForOption(logOption);
 
 var epicLogin = new EpicLogin();
-var tokenResponse = await epicLogin.Login();
-var exchangeResponse = await epicLogin.GetExchange(tokenResponse.AccessToken);
+var launcher = new Launcher();
 
-var manifestsDir = "C:\\ProgramData\\Epic\\EpicGamesLauncher\\Data\\Manifests";
-var manifests = Directory.GetFiles(manifestsDir, "*.item");
+var tokenResponse = await epicLogin.Login(log);
+var exchangeResponse = await epicLogin.GetExchange(tokenResponse.AccessToken, log);
 
-var manifest = manifests
-    .Select(File.ReadAllText)
-    .Select(x => JsonSerializer.Deserialize<Manifest>(x))
-    .First(x => x?.AppName == "Fortnite")!;
-
-var launcher = Path.Combine(manifest.InstallLocation, manifest.LaunchExecutable);
-string[] fortniteArgs = [
-    manifest.LaunchCommand,
-    "-AUTH_LOGIN=unused",
-    $"-AUTH_PASSWORD={exchangeResponse.Code}",
-    "-AUTH_TYPE=exchangecode",
-    "-epicapp=Fortnite",
-    "-epicenv=Prod",
-    "-EpicPortal",
-    $"-epicusername=\"{tokenResponse.DisplayName}\"",
-    $"-epicuserid={tokenResponse.AccountId}",
-    "-epiclocale=en",
-    "-epicsandboxid=fn"
-];
-
-var startInfo = new ProcessStartInfo {
-    FileName = launcher,
-    WorkingDirectory = Path.GetDirectoryName(launcher),
-    Arguments = string.Join(' ', fortniteArgs)
-};
-Process.Start(startInfo);
+if (!dontLaunch) {
+    var manifest = launcher.GetFortniteManifest();
+    launcher.LaunchFortnite(
+        manifest,
+        exchangeResponse.Code,
+        tokenResponse.DisplayName,
+        tokenResponse.AccountId
+    );
+}
